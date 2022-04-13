@@ -1,6 +1,6 @@
 import React from "react";
 import styles from "./style.scss";
-import { Button, Box, Typography } from "@material-ui/core";
+import { TextField, Button, Box, Typography } from "@material-ui/core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Papa from "papaparse";
 import { useHistory } from "react-router-dom";
@@ -32,10 +32,32 @@ const Upload: React.FC<Props> = ({}) => {
   const history = useHistory();
 
   const [error, setError] = React.useState<string>();
+  const [errorDownloadUrl, setErrorDownloadUrl] = React.useState<string>();
   const [parsedSource, setParsedSource] = useRecoilState(matrixState);
+  const [downloadUrl, setDownloadUrl] = React.useState<URL>();
   const [source, setSource] = useRecoilState(sourceState);
 
   const setTransformationConfig = useSetRecoilState(transformationConfigState);
+
+  const setDownloadUrlFromString = (url: string) => {
+    try {
+      setDownloadUrl(new URL(url));
+      setErrorDownloadUrl(undefined);
+    } catch (e) {
+      return setErrorDownloadUrl("Looks like an invalid URL.");
+    }
+  };
+
+  const downloadCsv = async () => {
+    setErrorDownloadUrl(undefined);
+    if (!downloadUrl) return;
+    await fetch(downloadUrl.toString())
+      .then((res) => res.text())
+      .then((data) => console.log(data))
+      .catch((reason) => {
+        setErrorDownloadUrl(reason.toString());
+      });
+  };
 
   const sourceText =
     (source && (typeof source === "string" ? "Input selected" : `Current file: ${source.name}`)) || "No file selected";
@@ -110,6 +132,37 @@ const Upload: React.FC<Props> = ({}) => {
           </Typography>
         )}
       </div>
+      <div className={styles.button}>
+        <Typography style={{ paddingTop: "2rem" }}></Typography>
+        <label>Or load CSV from URL:</label>
+        <Typography style={{ width: "500px" }}>
+          <TextField
+            fullWidth
+            id="csv-url"
+            type="url"
+            value={downloadUrl}
+            onChange={(event) => {
+              setDownloadUrlFromString(event.currentTarget.value);
+            }}
+          />
+        </Typography>
+
+        <p>
+          <Button
+            component="span"
+            variant="contained"
+            startIcon={<FontAwesomeIcon icon="download" />}
+            disabled={!downloadUrl}
+            onClick={() => {
+              downloadCsv();
+            }}
+          >
+            Download CSV file
+          </Button>
+          {errorDownloadUrl && <Typography color="error">{errorDownloadUrl}</Typography>}
+        </p>
+      </div>
+
       <Box>
         <Button disabled className={styles.actionButtons}>
           Back
